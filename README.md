@@ -49,8 +49,17 @@ reject the request rather than silently ignore it — check a model's
 
 ### Reasoning models
 
-Models that emit a reasoning trace return it in
-`additional_kwargs["reasoning_content"]` alongside the answer.
+Some FlexAI-served models return a reasoning trace in a `reasoning_content`
+field. That field is not part of the OpenAI schema, so `ChatOpenAI` discards
+it; this package surfaces it on both `invoke` and `stream`:
+
+```python
+result = ChatFlexAI(model="gpt-oss-120b").invoke("What is 17*23?")
+result.additional_kwargs["reasoning_content"]
+```
+
+Not every reasoning model uses the field — some reason inline in `content`
+instead — so treat it as present-or-absent rather than guaranteed.
 
 ## Capabilities vary by model
 

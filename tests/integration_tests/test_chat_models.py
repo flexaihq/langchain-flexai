@@ -106,3 +106,24 @@ def test_vision() -> None:
         ]
     )
     assert "red" in str(result.content).lower()
+
+
+# A model that returns a reasoning trace in `reasoning_content`. Not all
+# reasoning models do -- DeepSeek-V4-Flash reasons inline in `content` -- so
+# this is pinned to one that demonstrably emits the field.
+REASONING_MODEL = os.environ.get("FLEXAI_TEST_REASONING_MODEL", "gpt-oss-120b")
+
+
+def test_reasoning_content_surfaced_on_invoke() -> None:
+    llm = ChatFlexAI(model=REASONING_MODEL, max_tokens=800, temperature=0)
+    result = llm.invoke("What is 17*23? Think it through.")
+    assert result.additional_kwargs.get("reasoning_content")
+
+
+def test_reasoning_content_surfaced_on_stream() -> None:
+    llm = ChatFlexAI(model=REASONING_MODEL, max_tokens=800, temperature=0)
+    traces = [
+        chunk.additional_kwargs.get("reasoning_content")
+        for chunk in llm.stream("What is 12*9? Think it through.")
+    ]
+    assert any(traces), "reasoning_content present on invoke but absent on stream"

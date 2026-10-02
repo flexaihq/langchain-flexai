@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import openai
+from langchain_core.outputs import ChatGenerationChunk, ChatResult
 from langchain_core.utils import from_env, secret_from_env
 from langchain_openai.chat_models.base import BaseChatOpenAI
 from pydantic import ConfigDict, Field, SecretStr, model_validator
@@ -183,3 +184,65 @@ class ChatFlexAI(BaseChatOpenAI):
             )
             self.async_client = self.root_async_client.chat.completions
         return self
+
+    def _create_chat_result(
+        self,
+        response: dict | openai.BaseModel,
+        generation_info: dict | None = None,
+    ) -> ChatResult:
+        """Surface ``reasoning_content``, which the OpenAI client drops.
+
+        Several FlexAI-served models return their reasoning trace in a
+        ``reasoning_content`` field alongside ``content``. It is not part of
+        the OpenAI schema, so the SDK parses it into ``model_extra`` and
+        ``BaseChatOpenAI`` discards it. Lift it onto the message instead of
+        silently losing it.
+        """
+        result = super()._create_chat_result(response, generation_info)
+
+        if not isinstance(response, openai.BaseModel):
+            return result
+
+        choices = getattr(response, "choices", None)
+        if not choices or not result.generations:
+            return result
+
+        message = choices[0].message
+        reasoning = getattr(message, "reasoning_content", None)
+        if reasoning is None:
+            extra = getattr(message, "model_extra", None)
+            if isinstance(extra, dict):
+                reasoning = extra.get("reasoning_content")
+        if reasoning:
+            result.generations[0].message.additional_kwargs["reasoning_content"] = (
+                reasoning
+            )
+        return result
+
+    def _convert_chunk_to_generation_chunk(
+        self,
+        chunk: dict,
+        default_chunk_class: type,
+        base_generation_info: dict | None,
+    ) -> ChatGenerationChunk | None:
+        """Carry ``reasoning_content`` through streaming deltas too.
+
+        Without this the trace is available on an ``invoke`` and missing on a
+        ``stream`` of the same model, which is a worse contract than not
+        exposing it at all.
+        """
+        generation_chunk = super()._convert_chunk_to_generation_chunk(
+            chunk,
+            default_chunk_class,
+            base_generation_info,
+        )
+        if generation_chunk is None:
+            return None
+
+        choices = chunk.get("choices") or []
+        if not choices:
+            return generation_chunk
+        reasoning = (choices[0].get("delta") or {}).get("reasoning_content")
+        if reasoning:
+            generation_chunk.message.additional_kwargs["reasoning_content"] = reasoning
+        return generation_chunk
