@@ -52,6 +52,21 @@ reject the request rather than silently ignore it — check a model's
 Models that emit a reasoning trace return it in
 `additional_kwargs["reasoning_content"]` alongside the answer.
 
+## Capabilities vary by model
+
+FlexAI serves many models through one endpoint, so some behaviour is per-model
+rather than provider-wide. Verified against the live API:
+
+| Behaviour | Notes |
+|---|---|
+| Streaming token usage | Works. This package sets `stream_usage=True` by default, unlike `ChatOpenAI`, because FlexAI only reports usage when `stream_options.include_usage` is sent. |
+| Forced tool choice | Per-model, and best-effort rather than constrained decoding. `DeepSeek-V4-Flash-0731` and `gpt-oss-120b` honour `tool_choice="any"` on a prompt that invites no tool call; `gemma-4-31b-it` declines, and the gateway returns `400 tool_choice_not_honored` rather than forcing one. |
+| Structured output | Strict JSON schema is enforced on a subset of models. Those that do not support it reject the request rather than silently ignoring it. |
+| Image input | Supported on vision models only. A model that is not a vision model will not read the image. |
+
+Check a model's `supported_parameters` in `GET /v1/models` before relying on
+any of these.
+
 ## Configuration
 
 | Variable | Default | Purpose |

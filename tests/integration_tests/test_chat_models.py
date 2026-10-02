@@ -18,7 +18,7 @@ pytestmark = pytest.mark.skipif(
 
 # Non-reasoning model, so assertions are about the integration rather than a
 # model spending its budget on hidden reasoning.
-MODEL = os.environ.get("FLEXAI_TEST_MODEL", "Llama-3.3-70B-Instruct-FP8")
+MODEL = os.environ.get("FLEXAI_TEST_MODEL", "DeepSeek-V4-Flash-0731")
 VISION_MODEL = os.environ.get("FLEXAI_TEST_VISION_MODEL", "gemma-4-31b-it")
 
 # A 64x64 solid red PNG (220, 20, 20), generated and byte-verified rather

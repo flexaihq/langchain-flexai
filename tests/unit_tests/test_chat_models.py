@@ -97,3 +97,16 @@ def test_missing_key_also_fails_against_a_custom_endpoint() -> None:
     with mock.patch.dict(os.environ, {}, clear=True):
         with pytest.raises(ValueError, match="FLEXAI_API_KEY must be set"):
             ChatFlexAI(model=MODEL, base_url="http://localhost:8000/v1")
+
+
+def test_stream_usage_defaults_on() -> None:
+    # FlexAI only emits usage on a stream when stream_options.include_usage is
+    # sent, so the ChatOpenAI default of None yields usage_metadata=None for
+    # every streamed response.
+    llm = ChatFlexAI(model=MODEL, api_key=SecretStr("k"))
+    assert llm.stream_usage is True
+
+
+def test_stream_usage_can_be_disabled() -> None:
+    llm = ChatFlexAI(model=MODEL, api_key=SecretStr("k"), stream_usage=False)
+    assert llm.stream_usage is False

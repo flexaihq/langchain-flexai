@@ -107,6 +107,15 @@ class ChatFlexAI(BaseChatOpenAI):
     )
     """FlexAI API key."""
 
+    stream_usage: bool = True
+    """Whether to include token usage in streaming output.
+
+    Defaults to ``True``, unlike ``ChatOpenAI``. FlexAI only emits usage on a
+    stream when ``stream_options.include_usage`` is sent, so leaving this unset
+    makes ``usage_metadata`` ``None`` for every streamed response and silently
+    breaks cost tracking. Set it to ``False`` to opt out.
+    """
+
     api_base: str = Field(
         alias="base_url",
         default_factory=from_env("FLEXAI_API_BASE", default=DEFAULT_API_BASE),
